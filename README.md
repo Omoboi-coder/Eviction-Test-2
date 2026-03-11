@@ -1,66 +1,44 @@
-## Foundry
+# ARES PROTOCOL
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+A treasury system designed to manage and share protocol funds safely.
 
-Foundry consists of:
+## What it does
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+ARES is like a teasure system i designed for a protocol that manages big amount
+of funds. It allows governance to propose, approve and carry out treasury action securely.
 
-## Documentation
+## My Project Structure
 
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+```
+src/
+  interfaces/
+  libraries/
+  modules/
+  core/
+test/
+  functional/
+  exploits/
+script/
 ```
 
-### Test
+## Modules 
+ProposalSystem - This handles my lodging, committing and cancelling the treasury proposals
 
-```shell
-$ forge test
-```
+ AuthSig        - This verifies that enough guardians has signed a proposal before it moves forward
 
-### Format
+Timelock       - This holds the proposal in delay queue so it wont be executed immediately
 
-```shell
-$ forge fmt
-```
+RewardDistributor - This allows contributors to claim thier token rewards uisng the merkle proof
 
-### Gas Snapshots
+## How to Run it 
+cd my folder directory (EVICTION-TEST-DAY-2)
 
-```shell
-$ forge snapshot
-```
+forge install
 
-### Anvil
+forge test
 
-```shell
-$ anvil
-```
+## Design Decisions
 
-### Deploy
+I thought to add a bond system where proposers stake a small amount of ETH when lodging a proposal. If the proposal is cancelled maliciously they lose the bond. I added this because i felt it would stop people spamming the system with fake proposals
+The treasury itself can hold and distribute both ETH and tokens. Contributors claim their token rewards through the RewardDistributor using a merkle proof.
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
