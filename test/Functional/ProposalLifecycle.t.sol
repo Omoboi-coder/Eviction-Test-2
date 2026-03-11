@@ -47,7 +47,6 @@ contract ProposalLifecycleTest is Test {
         vm.deal(address(timelockModule  ), 10 ether);
     }
 
-    // test 1 - proposal can be lodged
     function test_LodgeProposal() public {
         vm.prank(proposer);
         bytes32 id = proposalModule.lodgeTransfer{value: 0.01 ether}(
@@ -59,7 +58,6 @@ contract ProposalLifecycleTest is Test {
         assertEq(stage, 0);
     }
 
-    // test 2 - guardian can approve and reach quorum
     function test_GuardianApproval() public {
         vm.prank(proposer);
         bytes32 id = proposalModule.lodgeTransfer{value: 0.01 ether}(
@@ -79,7 +77,6 @@ contract ProposalLifecycleTest is Test {
         assertTrue(authLayer.hasQuorum(id));
     }
 
-    // test 3 - proposal can be committed and queued
     function test_CommitAndQueue() public {
         vm.prank(proposer);
         bytes32 id = proposalModule.lodgeTransfer{value: 0.01 ether}(
@@ -105,7 +102,6 @@ contract ProposalLifecycleTest is Test {
         assertTrue(timelockModule.queuedAt(id) > 0);
     }
 
-    // test 4 - reward claiming works
     function test_RewardClaim() public {
         address claimant = address(0x5);
         uint256 amount   = 100 ether;
@@ -126,7 +122,7 @@ contract ProposalLifecycleTest is Test {
         assertEq(token.balanceOf(claimant), amount);
     }
 
-    // test 5 - timelock execution after delay
+   
     function test_TimelockExecution() public {
         vm.prank(proposer);
         bytes32 id = proposalModule.lodgeTransfer{value: 0.01 ether}(
