@@ -103,6 +103,7 @@ contract ProposalLifecycleTest is Test {
     }
 
     function test_RewardClaim() public {
+        
         address claimant = address(0x5);
         uint256 amount   = 100 ether;
 
@@ -110,6 +111,8 @@ contract ProposalLifecycleTest is Test {
         bytes32 root = leaf;
 
         TestToken token = new TestToken();
+
+        token.mint(address(rewardDistributor), 1000000 ether);
 
         vm.prank(governance);
         rewardDistributor.startEpoch(address(token), root, amount);
@@ -164,5 +167,9 @@ contract TestToken {
         balanceOf[msg.sender] -= amount;
         balanceOf[to]         += amount;
         return true;
+    }
+
+     function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
     }
 }
