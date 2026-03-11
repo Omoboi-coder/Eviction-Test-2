@@ -29,6 +29,29 @@ Timelock          - This one only handles the delay before execution
 
 RewardDistributor - This only handles contributor reward claims
 
+## My Libraries
+
+I also built three libraries that the modules connect to.
+
+ProposalLib holds the proposal struct and the stage logic. 
+I put it in a library so the module is clean.
+
+SignatureLib handles checking who signed a message. It includes 
+the chainId so signatures cannot be reused on other chains.
+
+MerkleLib handles checking merkle proofs for the reward system.
+
+
+## How Everything Connects
+
+So when a proposer wants to move funds they will lodge a proposal in 
+ProposalModule and the Guardians will sign it in the AuthSig. The Governance commits 
+and queues it and after the delay anyone can execute it through the
+AresTreasury which connects to the Timelock.
+
+The RewardDistributor is separate. The Contributors can claim 
+their rewards independently anytime they want.
+
 
 ## My Proposal Lifecycle
 
@@ -43,13 +66,15 @@ on the ProposalModule. Then the proposal moves to COMMITTED stage.
 QUEUED     -This is After the proposal is committed, governance calls enqueue fucntion on the Timelock. The proposal enters the QUEUED stage and a 
 delay clock starts.
 
-EXECUTABLE - The delay has passed and it can now be executed
+EXECUTABLE - The delay has passed here and Anyone can now call execute 
+on the AresTreasury. There is a 48 hour window to this, 
+after that the proposal expires.
 
 CLOSED     - The final state, where the proposal is either executed, expired or cancelled. The original proposer can cancel at any stage before CLOSED. If they cancel while still in DRAFT they get their bond back. 
 If they cancel after DRAFT they lose their bond as a penalty.
 
 
-####  The 5 stages serves different purpose.
+The 5 stages serves different purpose.
 
 DRAFT gives guardians time to review.
 
@@ -62,21 +87,32 @@ CLOSED makes sure it cannot be used again.
 
 ## Security Boundaries
 
-Each module does not trust the others anyhow.
+Each module does not trust the others anyhow or blindly.
+
+ProposalModule only create proposals, it does not execute at all
+
+The AuthSig module checks signatures and dosent have access to funds.
 
 The Timelock only executes proposals that have gone through the proper stages.
 
-The AuthSig module checks signatures and reports back.
+RewardDistributor rejects claim without any valid proof.
+
+
 
 
 ## Trust Assumptions
 
-Guardians  - they are trusted to sign or reject proposals honestly
+Guardians  - Guardians are trusted to sign or reject proposals 
+honestly. If they collude with a bad proposer the system can 
+be manipulated which is a big  risk
 
-Governance - trusted to start reward epochs and set merkle roots
+Governance - They are trusted to start reward epochs and set 
+merkle roots. Governance has a lot of power in this system so 
+if that address is compromised it is a serious problem.
 
-Contributors - not trusted, they must prove their claim with a merkle proof
+Contributors - The contributors are not trusted at all, they must always prove their claim with a merkle proof. I did this because anyone 
+could lie about being a contributor.
 
-Anyone - can execute a proposal once it reaches EXECUTABLE stage
+Anyone - Anyone Can execute a proposal once it reaches the executable stage. I made it this way on purpose so if one person goes offline it does not affect the whole system.
 
 
