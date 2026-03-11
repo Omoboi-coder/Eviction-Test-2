@@ -1,6 +1,6 @@
 # Architecture
 
-## Overview
+## My Summary
 
 I was asked to design a treasury system for a protocol called ARES from scratch.
 The reason they said i had to build it from scratch is because existing treasury designs have 
@@ -34,15 +34,19 @@ RewardDistributor - This only handles contributor reward claims
 
  My proposal in ARES goes through 5 stages:
 
-DRAFT      - When the proposal was created and waiting for guardian approvals
+DRAFT      - When A proposer calls lodgeTransfer, lodgeCall or lodgeUpgrade on the ProposalModule. They must send a certain amount of ETH as a bond. The proposal 
+is stored with a unique id and enters the DRAFT stage.
 
-COMMITTED  - This is when enough guardians has signed it, it is now locked and cannot be changed
+COMMITTED  - This is when Guardians review the proposal and each one calls approve fucntion on the AuthLayer with their signature and a unique nonce. Once enough guardians have signed to meet quorum, governance calls commit fucntion
+on the ProposalModule. Then the proposal moves to COMMITTED stage.
 
-QUEUED     - It has entered the timelock, the delay clock starts here
+QUEUED     -This is After the proposal is committed, governance calls enqueue fucntion on the Timelock. The proposal enters the QUEUED stage and a 
+delay clock starts.
 
 EXECUTABLE - The delay has passed and it can now be executed
 
-CLOSED     - The final state, where the proposal is either executed, expired or cancelled
+CLOSED     - The final state, where the proposal is either executed, expired or cancelled. The original proposer can cancel at any stage before CLOSED. If they cancel while still in DRAFT they get their bond back. 
+If they cancel after DRAFT they lose their bond as a penalty.
 
 
 ####  The 5 stages serves different purpose.
