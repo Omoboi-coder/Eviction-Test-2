@@ -36,8 +36,12 @@ contract ProposalModule is IProposalSystem {
         if (msg.value < PROPOSAL_BOND)
             revert Errors.InsufficientBond(msg.value, PROPOSAL_BOND);
 
-        bytes memory callData = abi.encode(token, recipient, amount);
-        proposalId = _lodge(recipient, callData, 0);
+         bytes memory callData = abi.encodeWithSignature(
+        "transfer(address,uint256)",
+        recipient,
+        amount
+    );
+        proposalId = _lodge(token, callData, 0);
     }
 
     //fucntion for call proposal
