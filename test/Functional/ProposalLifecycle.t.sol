@@ -1,0 +1,172 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "forge-std/Test.sol";
+import "../../src/Modules/ProposalModule.sol";
+import "../../src/Modules/AuthLayer.sol";
+import "../../src/Modules/TimelockModule.sol";
+import "../../src/Modules/RewardDistributor.sol";
+import "../../src/Core/MyAresTreasury.sol";
+import "../../src/Libraries/MerkleLib.sol";
+
+contract ProposalLifecycleTest is Test {
+
+    ProposalModule    proposalModule;
+    AuthLayer         authLayer;
+    TimelockModule    timelockModule;
+    RewardDistributor rewardDistributor;
+    AresTreasury      treasury;
+
+    address governance = address(0x1);
+    address proposer   = address(0x2);
+    address recipient  = address(0x4);
+
+    address guardian;
+    uint256 guardianKey = 0xABCD;
+
+    function setUp() public {
+        guardian = vm.addr(guardianKey);
+
+        address[] memory guardians = new address[](1);
+        guardians[0] = guardian;
+
+        proposalModule    = new ProposalModule(governance);
+        authLayer         = new AuthLayer(governance, 1, guardians);
+        timelockModule    = new TimelockModule(governance);
+        rewardDistributor = new RewardDistributor(governance);
+
+        treasury = new AresTreasury(
+            governance,
+            address(proposalModule),
+            address(authLayer),
+            address(timelockModule),
+            address(rewardDistributor)
+        );
+
+        vm.deal(proposer, 1 ether);
+        vm.deal(address(timelockModule  ), 10 ether);
+    }
+
+    // test 1 - proposal can be lodged
+    function test_LodgeProposal() public {
+        vm.prank(proposer);
+        bytes32 id = proposalModule.lodgeTransfer{value: 0.01 ether}(
+            address(0),
+            recipient,
+            1 ether
+        );
+        (, , uint8 stage, ,) = proposalModule.getProposal(id);
+        assertEq(stage, 0);
+    }
+
+    // test 2 - guardian can approve and reach quorum
+    function test_GuardianApproval() public {
+        vm.prank(proposer);
+        bytes32 id = proposalModule.lodgeTransfer{value: 0.01 ether}(
+            address(0),
+            recipient,
+            1 ether
+        );
+
+        bytes32 message = keccak256(abi.encode(id, uint256(1), block.chainid, address(authLayer)));
+        bytes32 digest  = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(guardianKey, digest);
+        bytes memory sig = abi.encodePacked(r, s, v);
+
+        vm.prank(guardian);
+        authLayer.approve(id, 1, sig);
+
+        assertTrue(authLayer.hasQuorum(id));
+    }
+
+    // test 3 - proposal can be committed and queued
+    function test_CommitAndQueue() public {
+        vm.prank(proposer);
+        bytes32 id = proposalModule.lodgeTransfer{value: 0.01 ether}(
+            address(0),
+            recipient,
+            1 ether
+        );
+
+        bytes32 message = keccak256(abi.encode(id, uint256(1), block.chainid, address(authLayer)));
+        bytes32 digest  = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(guardianKey, digest);
+        bytes memory sig = abi.encodePacked(r, s, v);
+
+        vm.prank(guardian);
+        authLayer.approve(id, 1, sig);
+
+        vm.prank(governance);
+        proposalModule.commit(id);
+
+        vm.prank(governance);
+        timelockModule.enqueue(id);
+
+        assertTrue(timelockModule.queuedAt(id) > 0);
+    }
+
+    // test 4 - reward claiming works
+    function test_RewardClaim() public {
+        address claimant = address(0x5);
+        uint256 amount   = 100 ether;
+
+        bytes32 leaf = MerkleLib.buildLeaf(claimant, amount);
+        bytes32 root = leaf;
+
+        TestToken token = new TestToken();
+
+        vm.prank(governance);
+        rewardDistributor.startEpoch(address(token), root, amount);
+
+        bytes32[] memory proof = new bytes32[](0);
+
+        vm.prank(claimant);
+        rewardDistributor.claim(1, amount, proof);
+
+        assertEq(token.balanceOf(claimant), amount);
+    }
+
+    // test 5 - timelock execution after delay
+    function test_TimelockExecution() public {
+        vm.prank(proposer);
+        bytes32 id = proposalModule.lodgeTransfer{value: 0.01 ether}(
+            address(0),
+            recipient,
+            0
+        );
+
+        bytes32 message = keccak256(abi.encode(id, uint256(1), block.chainid, address(authLayer)));
+        bytes32 digest  = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(guardianKey, digest);
+        bytes memory sig = abi.encodePacked(r, s, v);
+
+        vm.prank(guardian);
+        authLayer.approve(id, 1, sig);
+
+        vm.prank(governance);
+        proposalModule.commit(id);
+
+        vm.prank(governance);
+        timelockModule.enqueue(id);
+
+        vm.warp(block.timestamp + 2 days + 1);
+
+        treasury.execute(id, address(0), 0, "");
+
+        assertTrue(timelockModule.executed(id));
+    }
+}
+
+contract TestToken {
+    mapping(address => uint256) public balanceOf;
+
+    constructor() {
+        balanceOf[msg.sender] = 1000000 ether;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to]         += amount;
+        return true;
+    }
+}
