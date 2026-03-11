@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-// I was able to do this library by doing serious research.....
+// I was able to do this library by doing serious research and help of assistant....
 
 library SignatureLib {
 
@@ -23,7 +23,6 @@ library SignatureLib {
             ))
         ));
 
-        // split signature into its 3 parts
         bytes32 r;
         bytes32 s;
         uint8 v;
@@ -34,7 +33,6 @@ library SignatureLib {
             v := byte(0, calldataload(add(signature.offset, 64)))
         }
 
-        // recover and return the signer
         return ecrecover(digest, v, r, s);
     }
 }

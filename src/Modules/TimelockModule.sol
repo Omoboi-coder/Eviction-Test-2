@@ -2,12 +2,13 @@
 pragma solidity ^0.8.20;
 
 import "../Interfaces/ITimelock.sol";
+import "../Interfaces/IProposalSystem.sol";
 import "../Libraries/ProposalLib.sol";
 import "../Libraries/Errors.sol";
 
 contract TimelockModule is ITimelock {
-
     address public governance;
+    IProposalSystem public proposalModule;
     uint256 public constant DELAY = 2 days;
 
     mapping(bytes32 => uint256) public queuedAt;
@@ -27,8 +28,9 @@ contract TimelockModule is ITimelock {
         _;
     }
 
-    constructor(address _governance) {
+    constructor(address _governance, address _proposalModule) {
         governance = _governance;
+        proposalModule = IProposalSystem(_proposalModule);
     }
 
     function enqueue(bytes32 proposalId) external onlyGovernance {
@@ -36,20 +38,29 @@ contract TimelockModule is ITimelock {
         emit ProposalQueued(proposalId, block.timestamp + DELAY);
     }
 
-    function discharge(
-        bytes32 proposalId,
-        address target,
-        uint256 value,
-        bytes calldata callData
-    ) external noReentrant {
-        if (queuedAt[proposalId] == 0) revert Errors.ProposalNotFound(proposalId);
+    function discharge(bytes32 proposalId) external noReentrant {
+        if (queuedAt[proposalId] == 0)
+            revert Errors.ProposalNotFound(proposalId);
 
         uint256 unlockTime = queuedAt[proposalId] + DELAY;
-        if (block.timestamp < unlockTime) revert Errors.TooEarly(unlockTime, block.timestamp);
-        if (block.timestamp > unlockTime + 48 hours) revert Errors.ExecutionWindowClosed(proposalId);
-        if (executed[proposalId]) revert Errors.WrongStage(proposalId, ProposalLib.CLOSED);
+        if (block.timestamp < unlockTime)
+            revert Errors.TooEarly(unlockTime, block.timestamp);
+        if (block.timestamp > unlockTime + 48 hours)
+            revert Errors.ExecutionWindowClosed(proposalId);
+        if (executed[proposalId])
+            revert Errors.WrongStage(proposalId, ProposalLib.CLOSED);
 
         executed[proposalId] = true;
+
+        (
+            ,
+            address target,
+            bytes memory callData,
+            uint256 value,
+            ,
+            ,
+
+        ) = proposalModule.getProposal(proposalId);
 
         (bool success, ) = target.call{value: value}(callData);
         require(success, "execution failed");
@@ -60,7 +71,9 @@ contract TimelockModule is ITimelock {
     function isReady(bytes32 proposalId) external view returns (bool) {
         if (queuedAt[proposalId] == 0) return false;
         uint256 unlockTime = queuedAt[proposalId] + DELAY;
-        return block.timestamp >= unlockTime && block.timestamp <= unlockTime + 48 hours;
+        return
+            block.timestamp >= unlockTime &&
+            block.timestamp <= unlockTime + 48 hours;
     }
 
     receive() external payable {}

@@ -8,12 +8,7 @@ interface ITimelock {
 
     function enqueue(bytes32 proposalId) external;
 
-    function discharge(
-        bytes32 proposalId,
-        address target,
-        uint256 value,
-        bytes calldata callData
-    ) external;
+    function discharge(bytes32 proposalId) external;
 
     function isReady(bytes32 proposalId) external view returns (bool);
 }

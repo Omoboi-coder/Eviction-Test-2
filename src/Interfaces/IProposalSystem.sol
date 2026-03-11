@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 interface IProposalSystem {
-
     event ProposalLodged(bytes32 indexed proposalId, address indexed proposer);
     event ProposalCommitted(bytes32 indexed proposalId);
     event ProposalCancelled(bytes32 indexed proposalId);
@@ -28,11 +27,18 @@ interface IProposalSystem {
 
     function commit(bytes32 proposalId) external;
 
-    function getProposal(bytes32 proposalId) external view returns (
-        address proposer,
-        address target,
-        uint8 stage,
-        uint256 createdAt,
-        bool executed
-    );
+    function getProposal(
+        bytes32 proposalId
+    )
+        external
+        view
+        returns (
+            address proposer,
+            address target,
+            bytes memory callData,
+            uint256 value,
+            uint8 stage,
+            uint256 createdAt,
+            bool executed
+        );
 }

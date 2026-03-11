@@ -36,11 +36,11 @@ contract ProposalModule is IProposalSystem {
         if (msg.value < PROPOSAL_BOND)
             revert Errors.InsufficientBond(msg.value, PROPOSAL_BOND);
 
-         bytes memory callData = abi.encodeWithSignature(
-        "transfer(address,uint256)",
-        recipient,
-        amount
-    );
+        bytes memory callData = abi.encodeWithSignature(
+            "transfer(address,uint256)",
+            recipient,
+            amount
+        );
         proposalId = _lodge(token, callData, 0);
     }
 
@@ -120,7 +120,6 @@ contract ProposalModule is IProposalSystem {
             require(success, "Transfer failed");
         } else {
             p.close();
-           
         }
 
         emit ProposalCancelled(proposalId);
@@ -134,13 +133,23 @@ contract ProposalModule is IProposalSystem {
         returns (
             address proposer,
             address target,
+            bytes memory callData,
+            uint256 value,
             uint8 stage,
             uint256 createdAt,
             bool executed
         )
     {
         ProposalLib.Proposal storage p = _getProposal(proposalId);
-        return (p.proposer, p.target, p.stage, p.createdAt, p.executed);
+        return (
+            p.proposer,
+            p.target,
+            p.callData,
+            p.value,
+            p.stage,
+            p.createdAt,
+            p.executed
+        );
     }
 
     function _getProposal(
